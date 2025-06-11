@@ -9,7 +9,12 @@ storage_config:
     data_dir:
         gptcache_data
     manager:
-        sqlite,faiss
+        sqlite,chromadb
+    eviction_manager:
+        memory
+    eviction_params:
+        eviction: FIFO
+        max_size: 5
     vector_params:
         # Set vector storage related params here
 evaluation: 
@@ -21,5 +26,7 @@ pre_function:
 post_function:
     first
 config:
-    similarity_threshold: 0.8
+    similarity_threshold: 0.1
     # Set other config here
+
+
