@@ -213,20 +213,23 @@ def init_similar_cache_from_config(config_dir: str, cache_obj: Optional[Cache] =
         embedding_config = init_conf.get("embedding_config", {})
     embedding_model = _get_model(embedding, embedding_config)
 
-    storage_config = init_conf.get("storage_config", {})
-    storage_config.setdefault("manager", "sqlite,faiss")
-    storage_config.setdefault("data_dir", "gptcache_data")
-    storage_config.setdefault("vector_params", {})
-    storage_config["vector_params"] = storage_config["vector_params"] or {}
-    storage_config["vector_params"]["dimension"] = embedding_model.dimension
-    data_manager = manager_factory(**storage_config)
-
     eval_strategy = init_conf.get("evaluation", "distance")
     # Due to the problem with the first naming, it is reserved to ensure compatibility
     eval_config = init_conf.get("evaluation_kws", {})
     if not eval_config:
         eval_config = init_conf.get("evaluation_config", {})
     evaluation = _get_eval(eval_strategy, eval_config)
+
+    storage_config = init_conf.get("storage_config", {})
+    storage_config.setdefault("manager", "sqlite,faiss")
+    storage_config.setdefault("data_dir", "gptcache_data")
+    storage_config.setdefault("vector_params", {})
+    storage_config["vector_params"] = storage_config["vector_params"] or {}
+    storage_config["vector_params"]["dimension"] = embedding_model.dimension
+    storage_config["eviction_params"]["embedding_dimension"] = embedding_model.dimension
+    storage_config["eviction_params"]["threshold"] = init_conf.get("config")["similarity_threshold"]
+    storage_config["eviction_params"]["distance_func"] = evaluation
+    data_manager = manager_factory(**storage_config)
 
     cache_obj = cache_obj if cache_obj else cache
 

@@ -1,5 +1,6 @@
 from typing import Any, Callable, List
-
+from .policy_extentions.max_area import MaxAreaEvictionPolicy
+import numpy as np
 import cachetools
 
 from gptcache.manager.eviction.base import EvictionBase
@@ -49,6 +50,8 @@ class MemoryCacheEviction(EvictionBase):
             self._cache = cachetools.FIFOCache(maxsize=maxsize, **kwargs)
         elif self._policy == "RR":
             self._cache = cachetools.RRCache(maxsize=maxsize, **kwargs)
+        elif self._policy == "MAX_AREA":
+            self._cache = MaxAreaEvictionPolicy(maxsize=maxsize, **kwargs)
         else:
             raise ValueError(f"Unknown policy {policy}")
 
