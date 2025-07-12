@@ -3,7 +3,7 @@ import json
 import os
 import zipfile
 from typing import Optional
-
+from gptcache.embedding.sbert import SBERT  # pylint: disable=unused-import
 from gptcache import cache, Cache
 from gptcache.adapter import openai
 from gptcache.adapter.api import (
@@ -178,7 +178,7 @@ def main():
         init_conf = init_similar_cache_from_config(config_dir=args.cache_config_file)
         cache_dir = init_conf.get("storage_config", {}).get("data_dir", "")
     else:
-        init_similar_cache(args.cache_dir)
+        init_similar_cache(args.cache_dir,embedding=SBERT())
         cache_dir = args.cache_dir
     cache_file_key = args.cache_file_key
 
