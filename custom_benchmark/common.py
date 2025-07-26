@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+MOCK_ANSWER_PREFIX = "Mocked answer for: "
+
 @dataclass
 class CacheEvalItem:
     """

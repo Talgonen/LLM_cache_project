@@ -154,7 +154,7 @@ def main():
     )
     parser.add_argument("-k", "--cache-file-key", default="", help="the cache file key")
     parser.add_argument(
-        "-f", "--cache-config-file", default="cache_config_template.yml", help="the cache config file"
+        "-f", "--cache-config-file", default="cache_config_template.yml", help="the cache config file" # cache_config_template
     )
     parser.add_argument(
         "-o",

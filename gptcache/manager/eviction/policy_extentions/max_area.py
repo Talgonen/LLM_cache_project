@@ -4,6 +4,8 @@ from collections import defaultdict
 import logging
 import math
 from scipy.special import gammaln, betainc
+from sentence_transformers.util import cos_sim
+
 
 class MaxAreaEvictionPolicy():
 
@@ -67,10 +69,11 @@ class MaxAreaEvictionPolicy():
         # Update all graph with new key and calculate intersection areas
         for _cached_key in self._relation_graph.keys():
             cached_data = self.eval_cache_data(_cached_key)
-            cached_data["search_result"] = (float(np.linalg.norm(current_data["embedding"] - cached_data["embedding"], ord=2)), _cached_key)
+            # cached_data["search_result"] = (float(np.linalg.norm(current_data["embedding"] - cached_data["embedding"], ord=2)), _cached_key)
+            cached_data["search_result"] = (1 - float(MaxAreaEvictionPolicy._cosine_similarity(current_data["embedding"],cached_data["embedding"])), _cached_key)
             d = self._distance_adjust(self._distance_func.evaluation(current_data, cached_data))
-            if self.threshold <= d:
-                intersection_area = self._n_ball_intersection_volume(self.embedding_dim, self.radius, d)
+            if self.threshold >= d:
+                intersection_area = self._n_ball_intersection_volume(self.embedding_dim, self.radius, float(np.linalg.norm(current_data["embedding"] - cached_data["embedding"], ord=2)))
                 _key_neighbors[_cached_key] = intersection_area
                 self._relation_graph[_cached_key][key] = intersection_area
 
@@ -78,7 +81,9 @@ class MaxAreaEvictionPolicy():
         self._cache[key] = True
 
         if len(self._cache) > self.maxsize:
-            t_inter_area = list(map(lambda key, values: (key, sum(values.values())), self._relation_graph.keys(), self._relation_graph.values()))
+            keys = list(self._relation_graph.keys())
+            values = list(self._relation_graph.values())
+            t_inter_area = list(map(lambda key, values: (key, sum(values.values())), keys, values))
             max_key, max_area = max(t_inter_area, key=lambda x: x[1])
             self.popitem(max_key)
 
@@ -141,3 +146,15 @@ class MaxAreaEvictionPolicy():
         log_volume = (n / 2) * np.log(np.pi) + n * np.log(R) - gammaln(n / 2 + 1)
         
         return np.exp(log_volume)
+    
+    @staticmethod
+    def _cosine_similarity(a, b) -> float:
+        """
+        Calculate the cosine similarity between two vectors.
+        :param vec1: First vector.
+        :param vec2: Second vector.
+        :return: Cosine similarity value.
+        """
+        a = np.array(a)
+        b = np.array(b)
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
