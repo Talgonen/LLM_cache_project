@@ -13,9 +13,7 @@ storage_config:
     eviction_manager:
         memory
     eviction_params:
-        eviction: MAX_AREA
         max_size: 50
-        radius: 6.76
     vector_params:
         # Set vector storage related params here
 evaluation: 
