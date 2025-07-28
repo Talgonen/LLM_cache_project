@@ -7,6 +7,12 @@ from custom_benchmark.common import CacheEvalItem, MOCK_ANSWER_PREFIX
 import requests
 import random
 import argparse
+from gptcache.adapter.api import (
+    get,
+    put,
+    init_similar_cache,
+    init_similar_cache_from_config,
+)
 
 # Set seed for reproducibility
 random.seed(42)
@@ -19,11 +25,11 @@ class PawnRow:
     label: Optional[Union[int, str]] = None
 
     @property
-    def should_catch(self) -> bool:
+    def should_be_evacuated(self) -> bool:
         """
         Determine if the row should be caught based on the label.
         """
-        return self.label == "1"
+        return self.label == "1" # Label 1 is same meaning, so should be caught
     
 @dataclass
 class PawnRowEval:
@@ -38,8 +44,8 @@ def choose_samples(pawn_rows: list[PawnRow], sample_size: int = 10, balanced: bo
     If balanced is True, ensure an equal number of positive and negative samples.
     """
     if balanced:
-        positive_samples = [row for row in pawn_rows if row.should_catch]
-        negative_samples = [row for row in pawn_rows if not row.should_catch]
+        positive_samples = [row for row in pawn_rows if row.should_be_evacuated]
+        negative_samples = [row for row in pawn_rows if not row.should_be_evacuated]
         num_positive = min(len(positive_samples), sample_size // 2)
         num_negative = sample_size - num_positive
         return random.sample(positive_samples, num_positive) + random.sample(negative_samples, num_negative)
@@ -82,26 +88,31 @@ def add_to_cache(sentence: str, server_base_url: str = "http://localhost:8000"):
     Add a sentence to the cache.
     """
     mock_answer = f"{MOCK_ANSWER_PREFIX}{sentence}"
-    response = requests.post(f"{server_base_url}/put", json={"prompt": sentence, "answer": mock_answer})
-    if response.status_code == 200:
-        print(f"Added to cache: {sentence}")
-    else:
-        print(f"Failed to add to cache: {response.status_code} - {response.text}")
+    put(sentence, mock_answer)
+    # response = requests.post(f"{server_base_url}/put", json={"prompt": sentence, "answer": mock_answer})
+    # if response.status_code == 200:
+    #     print(f"Added to cache: {sentence}")
+    # else:
+    #     print(f"Failed to add to cache: {response.status_code} - {response.text}")
 
 def get_from_cache(sentence: str, server_base_url: str = "http://localhost:8000") -> str | None:
     """
     Get a sentence from the cache.
     Return string if cache hit, None if not found.
     """
-    print(f"Querying cache for: {sentence}")
-    response = requests.post(f"{server_base_url}/get", json={"prompt": sentence})
-    if response.status_code == 200:
-        data = response.json()
-        cached_answer = data["answer"]
-        return cached_answer
+    result = get(sentence)
+    if result:
+        return result
     else:
-        print(f"Failed to retrieve from cache: {response.status_code} - {response.text}")
         return None
+    # response = requests.post(f"{server_base_url}/get", json={"prompt": sentence})
+    # if response.status_code == 200:
+    #     data = response.json()
+    #     cached_answer = data["answer"]
+    #     return cached_answer
+    # else:
+    #     print(f"Failed to retrieve from cache: {response.status_code} - {response.text}")
+    #     return None
 
 def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cache_config_template.yml",run_server: bool = True):
     # Spin up the gptcache with the provided configuration. Run it as a subprocess
@@ -110,49 +121,32 @@ def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cac
     if not os.path.exists(gptcache_config_path):
         print(f"GPTCache configuration file {gptcache_config_path} does not exist.")
         sys.exit(1)
+    init_similar_cache_from_config(gptcache_config_path)
 
-    print("Starting GPTCache with the cache config from ", gptcache_config_path)
-    try:
-        if run_server:
-            server_path = os.path.join("gptcache_server", "server.py")
-            proc = subprocess.Popen(["python", server_path, "--cache-config-file", gptcache_config_path])
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to start GPTCache server: {e}")
-        sys.exit(1)
-    try:
-        time.sleep(10)  # Server startup time, adjust as necessary
-        eval_items = []
-        # ---- YOUR CODE TO QUERY THE SERVER HERE ----
-        for item in list_of_items:
-            # Populate the cache with the sentences
-            add_to_cache(item.sentence1)
-        print("Cache populated with sentence 1.")
-        for item in list_of_items:
+    eval_items = []
+    # Added garbage to cache
+    num_to_add = len(list_of_items)
+    for i, item in enumerate(list_of_items):
+        # Populate the cache with the sentences
+        add_to_cache(item.sentence1)
+        add_to_cache(f"garbage_{i}")
 
-            add_to_cache(item.sentence2)
-            # Checking if sentence_1 is in the cache
-            cache_answer = get_from_cache(item.sentence1)
-            if cache_answer and item.sentence1 in cache_answer: # Sentence 1 still in cache (was not removed from policy)
-                evacuated = False
-            else:
-                evacuated = True
-            eval_items.append(PawnRowEval(id=item.id, should_be_evacuated=not item.should_catch, evacuated=evacuated))
-        # Example placeholder
+    print("Cache populated with sentence 1.")
+    # Suffle the items to simulate random access
+    # random.shuffle(list_of_items)
+    for item in list_of_items:
 
-    finally:
-        if not run_server:
-            print("Skipping server shutdown as it was not started.")
-            return eval_items
-        print("Shutting down GPTCache server...")
-        # Graceful shutdown: send SIGTERM (or use your server's shutdown endpoint if available)
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            print("Force killing the GPTCache server...")
-            proc.kill()
-        print("Server stopped.")
-        return eval_items    
+        add_to_cache(item.sentence2)
+        # Checking if sentence_1 is in the cache
+        cache_answer = get_from_cache(item.sentence1)
+        if cache_answer and item.sentence1 in cache_answer: # Sentence 1 still in cache (was not removed from policy)
+            evacuated = False
+        else:
+            evacuated = True
+        eval_items.append(PawnRowEval(id=item.id, should_be_evacuated=item.should_be_evacuated, evacuated=evacuated))
+
+    return eval_items
+
 
 def evaluate_results(eval_items: list[PawnRowEval]):
     """Evaluate the results of the  paws cache evaluation."""
@@ -188,7 +182,7 @@ def evaluate_results(eval_items: list[PawnRowEval]):
 
 def main():
     args = argparse.ArgumentParser(description="Run PAWS benchmark with GPTCache")
-    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="cache_config_template.yml")
+    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="cache_config_template.yml") # baseline_config.yaml # cache_config_template.yml
     args.add_argument("--sample-size", type=int, default=50, help="Number of samples to evaluate from the PAWS dataset")
     args = args.parse_args()
     pawns_items = load_benachmark()
