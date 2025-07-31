@@ -28,7 +28,7 @@ pre_function:
 post_function:
     first
 config:
-    similarity_threshold: 0.98
+    similarity_threshold: 0.95
     # Set other config here
 
 

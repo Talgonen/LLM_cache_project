@@ -12,7 +12,7 @@ storage_config:
         sqlite,chromadb
     eviction_manager:
         memory
-    eviction_params:
+    eviction_params: 
         max_size: 100
         clean_size: 1
     vector_params:
