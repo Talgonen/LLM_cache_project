@@ -34,8 +34,7 @@ class PawnRow:
 @dataclass
 class PawnRowEval:
     id: str
-    should_be_evacuated: bool
-    evacuated: bool
+    cached: bool
 
 
 def choose_samples(pawn_rows: list[PawnRow], sample_size: int = 10, balanced: bool = True) -> list[PawnRow]:
@@ -114,9 +113,8 @@ def get_from_cache(sentence: str, server_base_url: str = "http://localhost:8000"
     #     print(f"Failed to retrieve from cache: {response.status_code} - {response.text}")
     #     return None
 
-def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cache_config_template.yml",run_server: bool = True):
+def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cache_config_template.yml",run_server: bool = True, garbage_rate: float = 0.95):
     # Spin up the gptcache with the provided configuration. Run it as a subprocess
-    import subprocess
     import sys
     if not os.path.exists(gptcache_config_path):
         print(f"GPTCache configuration file {gptcache_config_path} does not exist.")
@@ -124,26 +122,25 @@ def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cac
     init_similar_cache_from_config(gptcache_config_path)
 
     eval_items = []
+    items_added = []
     # Added garbage to cache
     num_to_add = len(list_of_items)
     for i, item in enumerate(list_of_items):
-        # Populate the cache with the sentences
-        add_to_cache(item.sentence1)
-        add_to_cache(f"garbage_{i}")
+
+        if random.random() > garbage_rate:
+            add_to_cache(item.sentence1)
+            items_added.append(item)
+        else:
+            add_to_cache(f"garbage_{i}")
 
     print("Cache populated with sentence 1.")
     # Suffle the items to simulate random access
     # random.shuffle(list_of_items)
-    for item in list_of_items:
+    for item in items_added:
 
-        add_to_cache(item.sentence2)
-        # Checking if sentence_1 is in the cache
-        cache_answer = get_from_cache(item.sentence1)
-        if cache_answer and item.sentence1 in cache_answer: # Sentence 1 still in cache (was not removed from policy)
-            evacuated = False
-        else:
-            evacuated = True
-        eval_items.append(PawnRowEval(id=item.id, should_be_evacuated=item.should_be_evacuated, evacuated=evacuated))
+
+        cached_answer = get_from_cache(item.sentence2)
+        eval_items.append(PawnRowEval(id=item.id,cached=cached_answer))
 
     return eval_items
 
@@ -151,30 +148,10 @@ def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cac
 def evaluate_results(eval_items: list[PawnRowEval]):
     """Evaluate the results of the  paws cache evaluation."""
     total_items = len(eval_items)
-    total_should_be_evacuated = sum(1 for item in eval_items if item.should_be_evacuated)
-    total_should_not_be_evacuated = sum(1 for item in eval_items if not item.should_be_evacuated)
+    cache_hits = sum((1 for eval_item in eval_items if eval_item.cached))
+    cache_hit_ratio = cache_hits / total_items
 
-    true_evac_rate = (
-        sum(1 for item in eval_items if item.should_be_evacuated and item.evacuated) / total_should_be_evacuated
-        if total_should_be_evacuated > 0 else 0
-    )
-    false_evac_rate = (
-        sum(1 for item in eval_items if not item.should_be_evacuated and item.evacuated) / total_should_not_be_evacuated
-        if total_should_not_be_evacuated > 0 else 0
-    )
-    true_keep_rate = (
-        sum(1 for item in eval_items if not item.should_be_evacuated and not item.evacuated) / total_should_not_be_evacuated
-        if total_should_not_be_evacuated > 0 else 0
-    )
-    false_keep_rate = (
-        sum(1 for item in eval_items if item.should_be_evacuated and not item.evacuated) / total_should_be_evacuated
-        if total_should_be_evacuated > 0 else 0
-    )
-
-    print(f"True evacuation rate: {true_evac_rate:.2f}")
-    print(f"False evacuation rate: {false_evac_rate:.2f}")
-    print(f"True keep rate (Hit rate): {true_keep_rate:.2f}")
-    print(f"False keep rate (False hit rate): {false_keep_rate:.2f}")
+    print(f"Hit rate {cache_hit_ratio:.2f}")
 
     print(f"Total items: {total_items}")
     
@@ -182,8 +159,8 @@ def evaluate_results(eval_items: list[PawnRowEval]):
 
 def main():
     args = argparse.ArgumentParser(description="Run PAWS benchmark with GPTCache")
-    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="baseline_config.yaml") # baseline_config.yaml # cache_config_template.yml
-    args.add_argument("--sample-size", type=int, default=50, help="Number of samples to evaluate from the PAWS dataset")
+    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="cache_config_template.yml") # baseline_config.yaml # cache_config_template.yml
+    args.add_argument("--sample-size", type=int, default=100, help="Number of samples to evaluate from the PAWS dataset")
     args = args.parse_args()
     pawns_items = load_benachmark()
     print(f"Loaded {len(pawns_items)} items from the PAWS benchmark.")
@@ -199,3 +176,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

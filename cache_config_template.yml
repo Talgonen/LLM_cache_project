@@ -14,7 +14,7 @@ storage_config:
         memory
     eviction_params:
         eviction: MAX_AREA
-        max_size: 100
+        max_size: 5
         radius: 6.76
         clean_size: 1
     vector_params:
@@ -28,7 +28,7 @@ pre_function:
 post_function:
     first
 config:
-    similarity_threshold: 0.95
+    similarity_threshold: 0.85
     # Set other config here
 
 

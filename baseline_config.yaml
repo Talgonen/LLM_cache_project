@@ -13,7 +13,7 @@ storage_config:
     eviction_manager:
         memory
     eviction_params: 
-        max_size: 100
+        max_size: 5
         clean_size: 1
     vector_params:
         # Set vector storage related params here
@@ -26,7 +26,7 @@ pre_function:
 post_function:
     first
 config:
-    similarity_threshold: 0.98
+    similarity_threshold: 0.85
     # Set other config here
 
 
