@@ -2,15 +2,13 @@ import os
 from dataclasses import dataclass
 from typing import Optional, Union
 import pandas as pd
-import time
-from custom_benchmark.common import CacheEvalItem, MOCK_ANSWER_PREFIX
-import requests
+from custom_benchmark.common import MOCK_ANSWER_PREFIX
 import random
 import argparse
+from pathlib import Path
 from gptcache.adapter.api import (
     get,
     put,
-    init_similar_cache,
     init_similar_cache_from_config,
 )
 
@@ -88,11 +86,7 @@ def add_to_cache(sentence: str, server_base_url: str = "http://localhost:8000"):
     """
     mock_answer = f"{MOCK_ANSWER_PREFIX}{sentence}"
     put(sentence, mock_answer)
-    # response = requests.post(f"{server_base_url}/put", json={"prompt": sentence, "answer": mock_answer})
-    # if response.status_code == 200:
-    #     print(f"Added to cache: {sentence}")
-    # else:
-    #     print(f"Failed to add to cache: {response.status_code} - {response.text}")
+
 
 def get_from_cache(sentence: str, server_base_url: str = "http://localhost:8000") -> str | None:
     """
@@ -104,16 +98,9 @@ def get_from_cache(sentence: str, server_base_url: str = "http://localhost:8000"
         return result
     else:
         return None
-    # response = requests.post(f"{server_base_url}/get", json={"prompt": sentence})
-    # if response.status_code == 200:
-    #     data = response.json()
-    #     cached_answer = data["answer"]
-    #     return cached_answer
-    # else:
-    #     print(f"Failed to retrieve from cache: {response.status_code} - {response.text}")
-    #     return None
 
-def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cache_config_template.yml",run_server: bool = True, garbage_rate: float = 0.95):
+
+def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cache_config_template.yml", garbage_rate: float = 0.95):
     # Spin up the gptcache with the provided configuration. Run it as a subprocess
     import sys
     if not os.path.exists(gptcache_config_path):
@@ -134,8 +121,7 @@ def query_gptcache(list_of_items: list[PawnRow],gptcache_config_path: str = "cac
             add_to_cache(f"garbage_{i}")
 
     print("Cache populated with sentence 1.")
-    # Suffle the items to simulate random access
-    # random.shuffle(list_of_items)
+
     for item in items_added:
 
 
@@ -150,25 +136,50 @@ def evaluate_results(eval_items: list[PawnRowEval]):
     total_items = len(eval_items)
     cache_hits = sum((1 for eval_item in eval_items if eval_item.cached))
     cache_hit_ratio = cache_hits / total_items
-
     print(f"Hit rate {cache_hit_ratio:.2f}")
 
     print(f"Total items: {total_items}")
     
+    return {
+        "cache_hit_ratio": cache_hit_ratio,
+        "total_items": total_items,
+        "cache_hits": cache_hits
+    }
+
 
 
 def main():
     args = argparse.ArgumentParser(description="Run PAWS benchmark with GPTCache")
     args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="cache_config_template.yml") # baseline_config.yaml # cache_config_template.yml
     args.add_argument("--sample-size", type=int, default=100, help="Number of samples to evaluate from the PAWS dataset")
+    args.add_argument("--garbage_rates", type=list[float], nargs="+", default=[0.95], help="Garbage rate to use for the evaluation (default: [0.95])")
     args = args.parse_args()
     pawns_items = load_benachmark()
-    print(f"Loaded {len(pawns_items)} items from the PAWS benchmark.")
+
+    all_results = []
+    result_dir = Path("results")
+    result_dir.mkdir(exist_ok=True)
     sample_size = args.sample_size
-    pawns_items = choose_samples(pawns_items, sample_size=sample_size, balanced=True)
-    print(f"Chosen {len(pawns_items)} samples for evaluation.")
-    eval_results = query_gptcache(pawns_items, gptcache_config_path=args.cache_config_path,run_server=False)
-    evaluate_results(eval_results)
+    garbage_rates = args.garbage_rates
+    save_path = f"results/{args.cache_config_path}_garbage.csv"
+    print(f"Loaded {len(pawns_items)} items from the PAWS benchmark.")
+    print(f"Sample size: {sample_size}, Garbage rates: {garbage_rates}")
+
+    for garbage_rate in garbage_rates:
+        print(f"Running evaluation with garbage rate: {garbage_rate}")
+        pawns_items = choose_samples(pawns_items, sample_size=sample_size, balanced=True)
+        eval_results = query_gptcache(pawns_items, gptcache_config_path=args.cache_config_path, garbage_rate=garbage_rate)
+        res = evaluate_results(eval_results)
+        all_results.append(res)
+
+    print("All evaluations completed.")
+    print(all_results)
+
+    # Save results to a file or process further as needed
+    # For example, you can save to a CSV file:
+    results_df = pd.DataFrame(all_results)
+    results_df.to_csv(save_path, index=False)
+    print(save_path)
 
 
 

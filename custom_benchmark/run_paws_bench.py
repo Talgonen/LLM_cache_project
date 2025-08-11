@@ -178,6 +178,13 @@ def evaluate_results(eval_items: list[PawnRowEval]):
 
     print(f"Total items: {total_items}")
     
+    return {
+        "true_evac_rate": true_evac_rate,
+        "false_evac_rate": false_evac_rate,
+        "true_keep_rate": true_keep_rate,
+        "false_keep_rate": false_keep_rate,
+    }
+
 
 
 def main():
