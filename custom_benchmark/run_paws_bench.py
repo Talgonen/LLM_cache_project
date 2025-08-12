@@ -189,16 +189,25 @@ def evaluate_results(eval_items: list[PawnRowEval]):
 
 def main():
     args = argparse.ArgumentParser(description="Run PAWS benchmark with GPTCache")
-    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="baseline_config.yaml") # baseline_config.yaml # cache_config_template.yml
+    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="custom_benchmark/config/paws_conf.yaml") # baseline_config.yaml # cache_config_template.yml
     args.add_argument("--sample-size", type=int, default=50, help="Number of samples to evaluate from the PAWS dataset")
     args = args.parse_args()
     pawns_items = load_benachmark()
+    save_path = f"results/{args.cache_config_path.split('/')[-1]}_paws.csv"
+
     print(f"Loaded {len(pawns_items)} items from the PAWS benchmark.")
     sample_size = args.sample_size
     pawns_items = choose_samples(pawns_items, sample_size=sample_size, balanced=True)
     print(f"Chosen {len(pawns_items)} samples for evaluation.")
     eval_results = query_gptcache(pawns_items, gptcache_config_path=args.cache_config_path,run_server=False)
-    evaluate_results(eval_results)
+    res = evaluate_results(eval_results)
+    print(f"Evaluation results: {res}")
+    
+    # Save results to a file or process further as needed
+    # For example, you can save to a CSV file:
+    results_df = pd.DataFrame([res])
+    results_df.to_csv(save_path, index=False)
+    print(f"Results saved to {save_path}")
 
 
 

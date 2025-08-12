@@ -150,9 +150,9 @@ def evaluate_results(eval_items: list[PawnRowEval]):
 
 def main():
     args = argparse.ArgumentParser(description="Run PAWS benchmark with GPTCache")
-    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="cache_config_template.yml") # baseline_config.yaml # cache_config_template.yml
+    args.add_argument("--cache-config-path", type=str,  help="Path to the GPTCache configuration file", default="custom_benchmark/config/garbench_maxarea_config.yml") # baseline_config.yaml # cache_config_template.yml
     args.add_argument("--sample-size", type=int, default=100, help="Number of samples to evaluate from the PAWS dataset")
-    args.add_argument("--garbage_rates", type=list[float], nargs="+", default=[0.95], help="Garbage rate to use for the evaluation (default: [0.95])")
+    args.add_argument("--garbage_rates", type=float, nargs="+", default=[0.95], help="Garbage rate to use for the evaluation (default: [0.95])")
     args = args.parse_args()
     pawns_items = load_benachmark()
 
@@ -161,7 +161,7 @@ def main():
     result_dir.mkdir(exist_ok=True)
     sample_size = args.sample_size
     garbage_rates = args.garbage_rates
-    save_path = f"results/{args.cache_config_path}_garbage.csv"
+    save_path = f"results/{args.cache_config_path.split('/')[-1]}_garbage.csv"
     print(f"Loaded {len(pawns_items)} items from the PAWS benchmark.")
     print(f"Sample size: {sample_size}, Garbage rates: {garbage_rates}")
 
@@ -178,6 +178,7 @@ def main():
     # Save results to a file or process further as needed
     # For example, you can save to a CSV file:
     results_df = pd.DataFrame(all_results)
+    results_df["garbage_rate"] = garbage_rates
     results_df.to_csv(save_path, index=False)
     print(save_path)
 

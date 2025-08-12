@@ -1,0 +1,32 @@
+# For `model_src`, `evaluation`, `post_function`, `pre_function`,
+# `storage_config` options, Check README for more.
+
+embedding:
+    sbert
+embedding_config:
+    # Set model kws here including `model`, `api_key` if needed
+storage_config:
+    data_dir:
+        gptcache_data
+    manager:
+        sqlite,chromadb
+    eviction_manager:
+        memory
+    eviction_params: 
+        max_size: 100
+        clean_size: 1
+    vector_params:
+        # Set vector storage related params here
+evaluation: 
+    distance
+evaluation_config:
+    max_distance: 1
+pre_function:
+    get_prompt
+post_function:
+    first
+config:
+    similarity_threshold: 0.98
+    # Set other config here
+
+
