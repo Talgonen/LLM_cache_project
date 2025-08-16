@@ -59,7 +59,12 @@ def plot_paws_results(output_dir: str = "results/plots"):
     
     for i, category in enumerate(categories):
         axes[i].bar(['Max Area', 'Baseline'], [max_area_results[category].mean(), baseline_results[category].mean()], color=['blue', 'orange'])
-        axes[i].set_title(category.replace('_', ' ').title())
+        title = category.replace('_', ' ').title()
+        if "true" in category:
+            title += "↑↑"
+        else:
+            title += "↓↓"
+        axes[i].set_title(title)
         axes[i].set_ylabel('Rate')
         axes[i].set_ylim(0, 1)
         axes[i].grid(False)
