@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+**/*venv*/
 # C extensions
 *.so
 **/*venv*/
@@ -139,3 +139,6 @@ dmypy.json
 **/.chroma
 docs/references/*
 !docs/references/index.rst
+
+.vscode/
+tal_folder/

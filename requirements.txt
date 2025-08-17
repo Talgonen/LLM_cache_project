@@ -2,3 +2,5 @@ numpy
 cachetools
 requests
 deprecated
+scipy
+matplotlib=3.10.5

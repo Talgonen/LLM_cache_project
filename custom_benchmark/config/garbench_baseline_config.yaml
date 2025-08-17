@@ -2,24 +2,31 @@
 # `storage_config` options, Check README for more.
 
 embedding:
-    onnx
+    sbert
 embedding_config:
     # Set model kws here including `model`, `api_key` if needed
 storage_config:
     data_dir:
         gptcache_data
     manager:
-        sqlite,faiss
+        sqlite,chromadb
+    eviction_manager:
+        memory
+    eviction_params: 
+        max_size: 5
+        clean_size: 1
     vector_params:
         # Set vector storage related params here
 evaluation: 
     distance
 evaluation_config:
-    # Set evaluation metric kws here
+    max_distance: 1
 pre_function:
     get_prompt
 post_function:
     first
 config:
-    similarity_threshold: 0.8
+    similarity_threshold: 0.85
     # Set other config here
+
+

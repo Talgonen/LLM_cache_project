@@ -230,23 +230,28 @@ class SSDataManager(DataManager):
         e: Optional[EvictionBase],
         max_size,
         clean_size,
-        policy="LRU"
+        policy="LRU",
+        **kwargs,
     ):
         self.s = s
         self.v = v
         self.o = o
         self.eviction_manager = EvictionManager(self.s, self.v)
         if e is None:
+            kwargs["data_func"] = self.s.get_data_by_id
             e = EvictionBase(name="memory",
                              maxsize=max_size,
                              clean_size=clean_size,
                              policy=policy,
-                             on_evict=self._clear)
+                             on_evict=self._clear,
+                             **kwargs)
         self.eviction_base = e
 
-        if not isinstance(self.eviction_base, NoOpEviction):
-            # if eviction manager is no op redis, we don't need to put data into eviction base
-            self.eviction_base.put(self.s.get_ids(deleted=False))
+        # if not isinstance(self.eviction_base, NoOpEviction):
+        #     # if eviction manager is no op redis, we don't need to put data into eviction base
+        #     ids = self.s.get_ids(deleted=False)
+        #     embeddings = [self.v.get_embeddings(id) for id in ids]
+        #     self.eviction_base.put(ids, embeddings)
 
     def _clear(self, marked_keys):
         self.eviction_manager.soft_evict(marked_keys)

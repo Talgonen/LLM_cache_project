@@ -1,6 +1,6 @@
 # pylint: disable=import-outside-toplevel
 from typing import Callable, List, Any
-
+import numpy as np
 from gptcache.utils.error import NotFoundError
 
 
@@ -29,9 +29,7 @@ class EvictionBase:
         if name in "memory":
             from gptcache.manager.eviction.memory_cache import MemoryCacheEviction
 
-            eviction_base = MemoryCacheEviction(
-                policy, maxsize, clean_size, on_evict, **kwargs
-            )
+            eviction_base = MemoryCacheEviction(policy, maxsize, clean_size, on_evict, **kwargs)
             return eviction_base
         if name == "redis":
             from gptcache.manager.eviction.redis_eviction import RedisCacheEviction
